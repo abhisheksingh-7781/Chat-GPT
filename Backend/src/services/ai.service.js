@@ -7,7 +7,7 @@ async function generateResponse(content){
         model:"gemini-2.5-flash",
         contents:content,
         config:{
-            systemInstruction:` you are a helpful assistant. respond in a friendly manner. keep the responses concise and to the point. avoid unnecessary details. okay`,
+            systemInstruction:` you are a helpful assistant. keep the responses to the point. avoid unnecessary details. okay`,
         }
     })
 
@@ -15,7 +15,20 @@ async function generateResponse(content){
     
 }
 
+async function generateVector(content){
+    const response = await ai.models.embedContent ({
+        model : 'gemini-embedding-001',
+        contents : content,
+        config : {
+            outputDimensionality : 768
+        }
+    })
+
+    return response.embeddings[0].values
+}
+
 module.exports={
-    generateResponse
+    generateResponse,
+    generateVector
 }
 

@@ -39,7 +39,7 @@ function initSocketServer(httpServer){
             user:socket.user._id,
             chat:massagePayload.chat,
             content:massagePayload.content,
-            role:"user"
+            role:"user",
         })
 
         const vectors=await aiService.generateVector(massagePayload.content)
@@ -48,8 +48,8 @@ function initSocketServer(httpServer){
             queryVector:vectors,
             limit:3,
             metadata:{
-
-            } 
+               
+             } 
         })
         
         await createMemory({
@@ -58,28 +58,38 @@ function initSocketServer(httpServer){
             metadata:{
                 chat:massagePayload.chat,
                 user:socket.user._id,
-                text:massagePayload.content
+                text:massagePayload.content,
+                role:"user"
             }
         })
 
       
-
-        console.log("releventMemories",relevantMemories)
-
-
-
         const chatHistory=(await massageModel.find({
             chat:massagePayload.chat
         }).sort({createdAt:-1}).limit(10).lean()).reverse()
 
-
-
-        const response=await aiService.generateResponse(chatHistory.map(item => {
-            return {
-                role: item.role,
+        const stm=chatHistory.map(item => {
+                  return {
+                   role: item.role,
                 parts: [ { text : item.content } ]
             }
-        }))
+        })
+
+        const ltm=[
+            {
+                role:"user",
+                parts:[{text:`these are some previous conversations with the user, use them to give better responses
+                    ${relevantMemories.map(memory=>memory.metadata.text).join("\n")} 
+                    ` }]
+            }
+        ]
+
+
+       console.log("LTM:",ltm[0])
+         console.log("STM:",stm)
+         
+
+        const response=await aiService.generateResponse([...ltm,...stm])
 
     
 
@@ -90,6 +100,7 @@ function initSocketServer(httpServer){
             role:"model"
         })
 
+
         const responseVectors=await aiService.generateVector(response)
 
         await createMemory({
@@ -98,12 +109,12 @@ function initSocketServer(httpServer){
             metadata:{
                 chat:massagePayload.chat,
                 user:socket.user._id,
-                text:response
+                text:response,
+                role:"model"
             }
 
         })
 
-        
 
         socket.emit("ai-massage-response",{
             content:response,

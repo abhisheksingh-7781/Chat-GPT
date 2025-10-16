@@ -9,6 +9,7 @@ const {createMemory,queryMemory}=require("../services/vector.service")
 
 function initSocketServer(httpServer){
 
+
     const io=new Server(httpServer)
 
     io.use(async(socket,next)=>{ 
@@ -26,103 +27,111 @@ function initSocketServer(httpServer){
         } catch (error) {
             next(new Error("Authentication error: invalid token "))
         }
-    })
+    }) //end of io.use
 
 
     io.on("connection",(socket)=>{
 
       socket.on("ai-massage",async(massagePayload)=>{
 
-        // massagePayload={chat:chatId,content:massage text}
-
-       const massage= await massageModel.create({
-            user:socket.user._id,
-            chat:massagePayload.chat,
-            content:massagePayload.content,
-            role:"user",
-        })
-
-        const vectors=await aiService.generateVector(massagePayload.content)
-
-          const relevantMemories=await queryMemory({
-            queryVector:vectors,
-            limit:3,
-            metadata:{
-               
-             } 
-        })
-        
-        await createMemory({
-            vectors,
-            massageId:massage._id,
-            metadata:{
-                chat:massagePayload.chat,
+         const [massage,vectors]=await Promise.all([
+            massageModel.create({
                 user:socket.user._id,
-                text:massagePayload.content,
-                role:"user"
-            }
-        })
+                chat:massagePayload.chat,
+                content:massagePayload.content,
+                role:"user",
+            }),
+            aiService.generateVector(massagePayload.content),
+         ]) //end of Promise.all
 
-      
-        const chatHistory=(await massageModel.find({
-            chat:massagePayload.chat
-        }).sort({createdAt:-1}).limit(10).lean()).reverse()
+
+              await createMemory({
+                    vectors,
+                    massageId:massage._id,
+                    metadata:{
+                        chat:massagePayload.chat,
+                        user:socket.user._id,
+                        text:massagePayload.content,
+                        role:"user"
+                         }
+                }) //end of createMemory
+
+
+
+
+        const [memory,chatHistory]=await Promise.all([
+            queryMemory({
+                queryVector:vectors,
+                limit:3,
+                metadata:{
+                    
+                }
+            }),
+            massageModel.find({
+                chat:massagePayload.chat
+            }).sort({createdAt:-1}).limit(10).lean().then(res=>res.reverse())
+        ]) //end of Promise.all
+
+
+
+   
+    
 
         const stm=chatHistory.map(item => {
                   return {
                    role: item.role,
                 parts: [ { text : item.content } ]
             }
-        })
+        }) //end of stm
 
         const ltm=[
             {
                 role:"user",
                 parts:[{text:`these are some previous conversations with the user, use them to give better responses
-                    ${relevantMemories.map(memory=>memory.metadata.text).join("\n")} 
+                    ${memory.map(item=>item.metadata.text).join("\n")} 
                     ` }]
             }
-        ]
+        ] //end of ltm
 
-
-       console.log("LTM:",ltm[0])
-         console.log("STM:",stm)
-         
 
         const response=await aiService.generateResponse([...ltm,...stm])
 
-    
 
-      const responseMassage = await massageModel.create({
-            user:socket.user._id,
-            chat:massagePayload.chat,
-            content:response,
-            role:"model"
-        })
-
-
-        const responseVectors=await aiService.generateVector(response)
-
-        await createMemory({
-            vectors:responseVectors,
-            massageId:responseMassage._id,
-            metadata:{
-                chat:massagePayload.chat,
-                user:socket.user._id,
-                text:response,
-                role:"model"
-            }
-
-        })
-
-
-        socket.emit("ai-massage-response",{
+       socket.emit("ai-massage-response",{
             content:response,
             chat:massagePayload.chat
         })
-      })
-    })
-}
+
+
+       const [responseMassage,responseVectors]=await Promise.all([
+        massageModel.create({
+            user:socket.user._id,
+            chat:massagePayload.chat,
+            content:response,
+            role:"model",
+        }),
+        aiService.generateVector(response)
+       ]) //end of promise.all
+
+
+       await createMemory({
+              vectors:responseVectors,
+              massageId:responseMassage._id,
+              metadata:{
+                   chat:massagePayload.chat,
+                   user:socket.user._id,
+                   text:response,
+                   role:"model"
+                }
+
+            }) //end of createMemory
+
+      })//end of socket.on ai-massage
+
+    }) //end of io.on connection
+
+
+} //end of initSocketServer
 
 
 module.exports=initSocketServer

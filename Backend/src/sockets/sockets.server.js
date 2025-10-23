@@ -9,13 +9,16 @@ const {createMemory,queryMemory}=require("../services/vector.service")
 
 function initSocketServer(httpServer){
 
-
-    const io=new Server(httpServer)
+       const io = new Server(httpServer, {
+        cors: {
+            origin: "http://localhost:5173",
+            allowedHeaders: [ "Content-Type", "Authorization" ],
+            credentials: true
+        }
+    })
 
     io.use(async(socket,next)=>{ 
         const cookies=cookie.parse(socket.handshake.headers?.cookie||"")
-       
-
         if(!cookies.token){
             next(new Error("Authentication error: no token provided"))
         }
@@ -31,6 +34,8 @@ function initSocketServer(httpServer){
 
 
     io.on("connection",(socket)=>{
+
+        // console.log("user connected",socket.user.id)
 
       socket.on("ai-massage",async(massagePayload)=>{
 

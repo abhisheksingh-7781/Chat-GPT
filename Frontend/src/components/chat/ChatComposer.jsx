@@ -1,5 +1,5 @@
-import React, { useCallback, useRef, useLayoutEffect } from 'react';
-import './ChatComposer.css';
+import { useCallback, useRef, useLayoutEffect } from 'react';
+import '../chat/ChatComposer.css';
 
 // NOTE: Public API (props) kept identical for drop-in upgrade
 const ChatComposer = ({ input, setInput, onSend, isSending }) => {

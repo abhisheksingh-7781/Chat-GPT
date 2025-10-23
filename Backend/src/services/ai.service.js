@@ -3,12 +3,12 @@ const { GoogleGenAI } = require("@google/genai");
 const ai = new GoogleGenAI({});
 
 async function generateResponse(content) {
-    const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: content,
-        config: {
-            temperature: 2,
-            systemInstruction: `<persona name="Kai">
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: content,
+    config: {
+      temperature: 2,
+      systemInstruction: `<persona name="Kai">
   <description>
     Kai is a friendly and professional AI assistant. He communicates with warmth, clarity, and confidence. 
     Kai balances a friendly tone with professionalism — approachable like a helpful teammate, but smart and reliable like a skilled expert.
@@ -53,26 +53,27 @@ async function generateResponse(content) {
     - Only sign off with "— Kai" on long or thoughtful messages.
   </signature>
 </persona>
-`,
+
+  ` ,
         },
     });
 
-    return response.text;
+return response.text;
 }
 
 async function generateVector(content) {
-    const response = await ai.models.embedContent({
-        model: "gemini-embedding-001",
-        contents: content,
-        config: {
-            outputDimensionality: 768,
-        },
-    });
+  const response = await ai.models.embedContent({
+    model: "gemini-embedding-001",
+    contents: content,
+    config: {
+      outputDimensionality: 768,
+    },
+  });
 
-    return response.embeddings[0].values;
+  return response.embeddings[0].values;
 }
 
 module.exports = {
-    generateResponse,
-    generateVector,
+  generateResponse,
+  generateVector,
 };

@@ -1,7 +1,8 @@
 import { createSlice, nanoid } from '@reduxjs/toolkit';
 
 // helpers
-const createEmptyChat = (title) => ({ id: nanoid(), title: title || 'New Chat', messages: [] });
+// Use `_id` to match backend MongoDB `_id` (ObjectId string) everywhere
+const createEmptyChat = (title) => ({ _id: nanoid(), title: title || 'New Chat', messages: [] });
 
 const chatSlice = createSlice({
     name: 'chat',
@@ -16,7 +17,7 @@ const chatSlice = createSlice({
             if (state.chats.length === 0) {
                 const chat = createEmptyChat();
                 state.chats.unshift(chat);
-                state.activeChatId = chat.id;
+                state.activeChatId = chat._id;
             }
         },
         startNewChat: {
@@ -26,8 +27,12 @@ const chatSlice = createSlice({
                 state.chats.unshift({ _id, title: title || 'New Chat', messages: [] });
                 state.activeChatId = _id;
             },
-            prepare(title){
-                return {payload:{_id:nanoid(),title:title || "new Chat"}};
+            // Accept either a title string or a backend-created chat object
+            prepare(input){
+                if (input && typeof input === 'object' && input._id) {
+                    return { payload: { _id: input._id, title: input.title || 'New Chat' } };
+                }
+                return { payload: { _id: nanoid(), title: input || 'New Chat' } };
             }
         },
         selectChat(state, action) {
@@ -48,7 +53,7 @@ const chatSlice = createSlice({
         addUserMessage: {
             reducer(state, action) {
                 const { chatId, message } = action.payload;
-                const chat = state.chats.find(c => c.id === chatId);
+                const chat = state.chats.find(c => c._id === chatId);
                 if (!chat) return;
                 if (chat.messages.length === 0) {
                     chat.title = message.content.slice(0, 40) + (message.content.length > 40 ? '…' : '');
@@ -62,7 +67,7 @@ const chatSlice = createSlice({
         addAIMessage: {
             reducer(state, action) {
                 const { chatId, message } = action.payload;
-                const chat = state.chats.find(c => c.id === chatId);
+                const chat = state.chats.find(c => c._id === chatId);
                 if (!chat) return;
                 chat.messages.push(message);
             },

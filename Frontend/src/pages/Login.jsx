@@ -36,8 +36,6 @@ const Login = () => {
         
    }
 
-
-
     return (
         <div className="center-min-h-screen minimal">
             <div className="auth-card" role="main" aria-labelledby="login-heading">

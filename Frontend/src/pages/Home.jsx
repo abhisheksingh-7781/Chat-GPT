@@ -31,11 +31,9 @@ const Home = () => {
   const [ sidebarOpen, setSidebarOpen ] = React.useState(false);
   const [socket, setSocket] = useState(null)
 
-  const activeChat = chats.find(c => c.id === activeChatId) || null;
+  const activeChat = chats.find(c => c._id === activeChatId) || null;
 
-  const [ messages, setMessages ] = useState([
-
-  ]);
+  const [ messages, setMessages ] = useState([]);
 
 
 
@@ -44,13 +42,16 @@ const Home = () => {
     let title = window.prompt('Enter a title for the new chat:', '');
     if (title) title = title.trim();
     if (!title) return
-    const response = await axios.post("http://localhost:3000/api/chat/", {
+    const response = await axios.post("http://localhost:3000/api/chat", {
       title
     }, {
       withCredentials: true
-    })
-    getMessages(response.data.chat._id)
-    dispatch(startNewChat(response.data.chat)); 
+    });
+
+    // Use the created chat returned in response.data.title (backend uses `title` key)
+    const created = response.data.title;
+    getMessages(created._id);
+    dispatch(startNewChat(created));
     setSidebarOpen(false);
   }
 
@@ -58,8 +59,7 @@ const Home = () => {
   useEffect(() => {
 
     axios.get("http://localhost:3000/api/chat", { withCredentials: true })
-      .then(response => {
-       
+      .then(response => {      
         dispatch(setChats(response.data.chats.reverse()));
       })
 
@@ -68,15 +68,15 @@ const Home = () => {
       })
       tempSocket.on("ai-massage-response",(massagePayload)=>{
 
-        // console.log("Recevied AI Response :",massagePayload)
+        console.log("Recevied AI Response :",massagePayload)
         
         setMessages((prevMessage)=>[...prevMessage,{
           type:'ai',
-          content:massagePayload.content
+          content: massagePayload.content
         }])
+
         dispatch(sendingFinished());
       })
-     
       setSocket(tempSocket)
 
   }, []);
@@ -89,13 +89,18 @@ const Home = () => {
     if (!trimmed || !activeChatId || isSending) return;
     dispatch(sendingStarted());
    
-    setMessages((prevMessage)=>[...prevMessage,{
-      type:"user",
+    // setMessages((prevMessage)=>[...prevMessage,{
+    //   type:"user",
+    //   content: trimmed
+    // }])
+
+      const newMessages = [ ...messages, {
+      type: 'user',
       content: trimmed
-    }])
+    } ];
  
 
-     
+      setMessages(newMessages);
 
     dispatch(setInput(""))
 
